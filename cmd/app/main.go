@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -26,8 +27,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	// init logger, todo: change to slog
-	logger := log.New(os.Stderr, "", 0)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	// init config
 	var cfg config
@@ -35,16 +35,14 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to load env vars: %w", err)
 	}
 
-	logger.Printf("Staring with config %+v", cfg)
+	logger.Info("Staring with config", slog.Any("config", cfg))
 
 	// init http server
 	serverErrors := make(chan error, 1)
 	var httpserver = http.SetupServer(ctx, cfg.Http)
 
 	go func() {
-		// todo: uncomment
-		//logger.Info("initializing HTTP server", slog.String("host", cfg.Web.APIHost))
-
+		logger.Info("initializing HTTP server", slog.String("Host", cfg.Http.ServerAddr))
 		serverErrors <- httpserver.ListenAndServe()
 	}()
 
@@ -52,8 +50,8 @@ func run(ctx context.Context) error {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
 	case <-ctx.Done():
-		//todo: change to log
-		fmt.Errorf("server shutdown: %w", ctx.Err())
+
+		logger.Error("server shutdown: %w", ctx.Err())
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 

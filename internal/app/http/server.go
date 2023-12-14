@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-
-	"github.com/mirfaiziev/golang-server/internal/app/http/api"
+	"github.com/mirfaiziev/golang-server/internal/app/http/handler"
+	"github.com/mirfaiziev/golang-server/internal/infra/log"
 )
 
 type Config struct {
@@ -29,11 +29,11 @@ func SetupServer(ctx context.Context, cfg Config) *http.Server {
 
 func router() *chi.Mux {
 	r := chi.NewRouter()
-	// todo: add log to the request
-	// r.Use(log.RequestLogger)
+
+	r.Use(log.RequestLogger)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	r.Get("/hello", api.Hello)
+	r.Get("/hello", handler.Hello)
 
 	return r
 }
