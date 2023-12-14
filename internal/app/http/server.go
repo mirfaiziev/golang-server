@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
-	"github.com/mirfaiziev/golang-server/cmd/app/internal/app/http/api"
+	"github.com/mirfaiziev/golang-server/internal/app/http/api"
 )
 
 type Config struct {

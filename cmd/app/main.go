@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mirfaiziev/golang-server/cmd/app/internal/app/http"
+	"github.com/mirfaiziev/golang-server/internal/app/http"
 )
 
 type config struct {
