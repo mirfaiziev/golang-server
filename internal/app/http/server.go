@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/mirfaiziev/golang-server/internal/app/http/handler"
+	"github.com/mirfaiziev/golang-server/internal/app/stats"
 	"github.com/mirfaiziev/golang-server/internal/infra/log"
 )
 
@@ -33,7 +34,7 @@ func router() *chi.Mux {
 	r.Use(log.RequestLogger)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	r.Get("/hello", handler.Hello)
+	r.Post("/analyze", handler.NewAnalyzeHandler(stats.NewService()).Analyze)
 
 	return r
 }

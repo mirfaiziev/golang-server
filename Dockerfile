@@ -11,8 +11,6 @@ RUN adduser -D $USER && mkdir -p /etc/sudoers.d \
 
 USER $USER
 
-EXPOSE 8080
-
 WORKDIR /app
 
 
