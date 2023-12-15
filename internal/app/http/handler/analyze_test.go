@@ -22,7 +22,7 @@ func (s *HandlerSuite) TestAnalyzeHandler_nweeks_absent() {
 	req := httptest.NewRequest(http.MethodGet, "/analyze", nil)
 	w := httptest.NewRecorder()
 
-	h := NewAnalyzeHandler(nil)
+	h := NewAnalyzeHandler(nil, nil)
 	h.Analyze(w, req)
 
 	s.Equal(http.StatusBadRequest, http.StatusBadRequest)
@@ -33,7 +33,7 @@ func (s *HandlerSuite) TestAnalyzeHandler_nweeks_wrong() {
 	req := httptest.NewRequest(http.MethodGet, "/analyze?nweeks=some-string", nil)
 	w := httptest.NewRecorder()
 
-	h := NewAnalyzeHandler(nil)
+	h := NewAnalyzeHandler(nil, nil)
 	h.Analyze(w, req)
 
 	s.Equal(http.StatusBadRequest, http.StatusBadRequest)
@@ -44,7 +44,7 @@ func (s *HandlerSuite) TestAnalyzeHandler_nweeks_too_big() {
 	req := httptest.NewRequest(http.MethodGet, "/analyze?nweeks=7000", nil)
 	w := httptest.NewRecorder()
 
-	h := NewAnalyzeHandler(nil)
+	h := NewAnalyzeHandler(nil, nil)
 	h.Analyze(w, req)
 
 	s.Equal(http.StatusBadRequest, http.StatusBadRequest)
@@ -55,7 +55,7 @@ func (s *HandlerSuite) TestAnalyzeHandler_wrong_body() {
 	req := httptest.NewRequest(http.MethodGet, "/analyze?nweeks=1", strings.NewReader("some string"))
 	w := httptest.NewRecorder()
 
-	h := NewAnalyzeHandler(nil)
+	h := NewAnalyzeHandler(nil, nil)
 	h.Analyze(w, req)
 
 	s.Equal(http.StatusBadRequest, http.StatusBadRequest)

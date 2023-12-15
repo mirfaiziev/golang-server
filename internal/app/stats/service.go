@@ -6,12 +6,15 @@ import (
 )
 
 const (
-	MaxWeeks = 6000 // more than 100 years, should be enough
+	// more than 100 years, should be enough
+	MaxWeeks = 6000
+	// 60 km/h, which is 16.67 m/s, source https://en.wikipedia.org/wiki/Footspeed, maximal recorded ~45 km/h, so 60 more than enough
+	MaxRunnerSpeed = 17
 )
 
 type InputItem struct {
-	Distance  int       `json:"distance"`
-	Time      int       `json:"time"`
+	Distance  int       `json:"distance"` // meters
+	Time      int       `json:"time"`     // seconds
 	Timestamp time.Time `json:"timestamp"`
 }
 
@@ -27,13 +30,8 @@ type Output struct {
 }
 
 type WeeklyStats struct {
-	totalDistance  int
-	totalTime      int
-	maxDistance    int
-	maxTime        int
-	workoutsNumber int
-	mediumTime     int
-	mediumDistance int
+	totalDistance int
+	totalTime     int
 }
 
 // key - start of the week in unix timestamp
@@ -46,36 +44,47 @@ func NewService() *Service {
 	return &Service{}
 }
 
-func (s *Service) Analyze(nweeks int, now time.Time, ii ...InputItem) (Output, error) {
+func (s *Service) Analyze(nweeks int, now time.Time, ii []InputItem) (*Output, error) {
 	// no stats - show 0 everywhere
 	if len(ii) == 0 {
-		return Output{}, nil
+		return &Output{}, nil
 	}
 
 	buckets := make(WeeklyStatsBuckets, nweeks)
+	earliest := s.beginOfWeek(now.AddDate(0, 0, -7*(nweeks-1)))
 
-	var earliest, weekStart time.Time
-
-	for i := 0; i < nweeks; i++ {
-		weekStart = s.beginOfWeek(now.AddDate(0, 0, -7*i))
-		earliest = weekStart
-		buckets[weekStart.Unix()] = WeeklyStats{}
-	}
-
+	// calculate common stats and fill weekly buckets, which will be used to calculate weekly stats
 	var (
 		maxDistance    int
 		maxTime        int
 		totalDistance  int
 		totalTime      int
-		workoutsNumber int
 		mediumDistance int
 		mediumTime     int
+		workoutsNumber int
 	)
 
 	for _, item := range ii {
-		// doesn't include into analyze event happened before earliest possible time (monday of the earliest week)
+		// doesn't include into analyze event happened before earliest possible time (Monday of the earliest week)
 		if item.Timestamp.Before(earliest) {
 			continue
+		}
+
+		// validate input item, distance and time must be both positive or both zero
+		if (item.Distance > 0 && item.Time == 0) || (item.Distance == 0 && item.Time > 0) {
+			return nil,
+				fmt.Errorf(
+					"data for timestame %s is incorrect, distance and time must be both positive or both zero",
+					item.Timestamp,
+				)
+		}
+		if item.Distance > MaxRunnerSpeed*item.Time {
+			return nil,
+				fmt.Errorf(
+					"data for timestame %s is incorrect, speed is too high: %d m/s",
+					item.Timestamp,
+					int(item.Distance/item.Time),
+				)
 		}
 
 		workoutsNumber += 1
@@ -91,17 +100,13 @@ func (s *Service) Analyze(nweeks int, now time.Time, ii ...InputItem) (Output, e
 		}
 
 		key := s.beginOfWeek(item.Timestamp).Unix()
-		weeklyStats := buckets[key]
+		weeklyStats, ok := buckets[key]
+		if !ok {
+			weeklyStats = WeeklyStats{}
+		}
+
 		weeklyStats.totalDistance += item.Distance
 		weeklyStats.totalTime += item.Time
-
-		if item.Distance > weeklyStats.maxDistance {
-			weeklyStats.maxDistance = item.Distance
-		}
-		if item.Time > weeklyStats.maxTime {
-			weeklyStats.maxTime = item.Time
-		}
-		weeklyStats.workoutsNumber += 1
 
 		buckets[key] = weeklyStats
 	}
@@ -111,24 +116,32 @@ func (s *Service) Analyze(nweeks int, now time.Time, ii ...InputItem) (Output, e
 		mediumTime = int(totalTime / workoutsNumber)
 	}
 
-	for key, bucket := range buckets {
-		b := bucket
-		if b.workoutsNumber == 0 {
-			b.mediumTime = 0
-			b.mediumDistance = 0
-		} else {
-			b.mediumTime = int(bucket.totalTime / bucket.workoutsNumber)
-			b.mediumDistance = int(bucket.totalDistance / bucket.workoutsNumber)
-		}
+	// aggregate weekly stats
+	var (
+		maxWeeklyDistance int
+		maxWeeklyTime     int
+	)
 
-		buckets[key] = b
+	for _, bucket := range buckets {
+		b := bucket
+
+		if b.totalDistance > maxWeeklyDistance {
+			maxWeeklyDistance = b.totalDistance
+		}
+		if b.totalTime > maxWeeklyTime {
+			maxWeeklyTime = b.totalTime
+		}
 	}
 
-	return Output{
-		MaxDistance:    maxDistance,
-		MaxTime:        maxTime,
-		MediumDistance: mediumDistance,
-		MediumTime:     mediumTime,
+	return &Output{
+		MaxDistance:          maxDistance,
+		MaxTime:              maxTime,
+		MediumDistance:       mediumDistance,
+		MediumTime:           mediumTime,
+		MaxWeeklyDistance:    maxWeeklyDistance,
+		MaxWeeklyTime:        maxWeeklyTime,
+		MediumWeeklyDistance: int(totalDistance / nweeks),
+		MediumWeeklyTime:     int(totalTime / nweeks),
 	}, nil
 }
 
@@ -139,8 +152,6 @@ func (s *Service) beginOfWeek(t time.Time) time.Time {
 		weekday = 7
 	}
 	weekday -= 1
-
-	fmt.Println(weekday)
 
 	return t.AddDate(0, 0, -weekday).
 		Add(-time.Duration(t.Hour()) * time.Hour).

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,11 +18,12 @@ type AnalyzeErrResponse struct {
 }
 
 type AnalyzeHandler struct {
-	s *stats.Service
+	s      *stats.Service
+	logger *slog.Logger
 }
 
-func NewAnalyzeHandler(s *stats.Service) *AnalyzeHandler {
-	return &AnalyzeHandler{s: s}
+func NewAnalyzeHandler(s *stats.Service, logger *slog.Logger) *AnalyzeHandler {
+	return &AnalyzeHandler{s: s, logger: logger}
 }
 
 func (h *AnalyzeHandler) Analyze(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +42,7 @@ func (h *AnalyzeHandler) Analyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.s.Analyze(nweeks, time.Now(), req...)
+	result, err := h.s.Analyze(nweeks, time.Now(), req)
 	if err != nil {
 		h.validationError(w, fmt.Errorf("failed to analyze: %w", err), http.StatusBadRequest)
 
@@ -69,7 +71,8 @@ func (h *AnalyzeHandler) getNweeks(r *http.Request) (int, error) {
 }
 
 func (h *AnalyzeHandler) validationError(w http.ResponseWriter, err error, statusCode int) {
-	// todo: log error
+	h.logger.Error("validation error", slog.Any("error", err))
+
 	if statusCode == 0 {
 		statusCode = http.StatusBadRequest
 	}
