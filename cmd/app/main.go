@@ -39,7 +39,7 @@ func run(ctx context.Context) error {
 
 	// init http server
 	serverErrors := make(chan error, 1)
-	var httpserver = http.SetupServer(ctx, cfg.Http)
+	var httpserver = http.SetupServer(ctx, logger, cfg.Http)
 
 	go func() {
 		logger.Info("initializing HTTP server", slog.String("Host", cfg.Http.ServerAddr))
@@ -59,6 +59,6 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("shutdown: %w", err)
 		}
 
-		return fmt.Errorf("Successfuly shutdown")
+		return fmt.Errorf("Successfully shutdown")
 	}
 }
